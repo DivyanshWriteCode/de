@@ -13,59 +13,40 @@ const Live = () => {
     const broadcast = useBroadcastEvent();
 
     const [reactions, setReactions] = useState<Reaction[]>([]);
-
-
-    useInterval(() => {
-        if (cursorState.mode === CursorMode.Reaction && cursorState.isPressed && cursor) {
-            // concat all the reactions created on mouse click
-            setReactions((reactions) =>
-                reactions.concat([
-                    {
-                        point: { x: cursor.x, y: cursor.y },
-                        value: cursorState.reaction,
-                        timestamp: Date.now(),
-                    },
-                ])
-            );
-
-            // Broadcast the reaction to other users
-            broadcast({
-                x: cursor.x,
-                y: cursor.y,
-                value: cursorState.reaction,
-            });
-        }
-    }, 100);
-
-
-
-    useEventListener((eventData) => {
-        const event = eventData.event as ReactionEvent;
-        setReactions((reactions) =>
-            reactions.concat([
-                {
-                    point: { x: event.x, y: event.y },
-                    value: event.value,
-                    timestamp: Date.now(),
-                },
-            ])
-        );
-    });
-
     const [cursorState, setCursorState] = useState<CursorState>({
         mode: CursorMode.Hidden,
     });
 
+    useInterval(() => {
+        if (cursorState.mode === CursorMode.Reaction && cursorState.isPressed && cursor) {
+            const newReaction = {
+                point: { x: cursor.x, y: cursor.y },
+                value: cursorState.reaction,
+                timestamp: Date.now(),
+            };
+            setReactions((reactions) => [...reactions, newReaction]);
+            broadcast(newReaction);
+        }
+    }, 100);
+
+    useEventListener((eventData) => {
+        const event = eventData.event as ReactionEvent;
+        const newReaction = {
+            point: { x: event.x, y: event.y },
+            value: event.value,
+            timestamp: Date.now(),
+        };
+        setReactions((reactions) => [...reactions, newReaction]);
+    });
+
     const handlePointerMove = useCallback((event: React.PointerEvent) => {
         event.preventDefault();
-
-        if (!cursor || cursorState.mode !== CursorMode.ReactionSelector) {
+        if (cursorState.mode !== CursorMode.ReactionSelector) {
             const x = event.clientX - event.currentTarget.getBoundingClientRect().x;
             const y = event.clientY - event.currentTarget.getBoundingClientRect().y;
-
             updateMyPresence({ cursor: { x, y } });
         }
-    }, [cursor, cursorState.mode, updateMyPresence]);
+    }, [cursorState.mode, updateMyPresence]);
 
     const handlePointerLeave = useCallback(() => {
         setCursorState({ mode: CursorMode.Hidden });
@@ -75,42 +56,27 @@ const Live = () => {
     const handlePointerDown = useCallback((event: React.PointerEvent) => {
         const x = event.clientX - event.currentTarget.getBoundingClientRect().x;
         const y = event.clientY - event.currentTarget.getBoundingClientRect().y;
-
         updateMyPresence({ cursor: { x, y } });
-
-        setCursorState((state) =>
-            cursorState.mode === CursorMode.Reaction ? { ...state, isPressed: true } : state
-        );
+        setCursorState((state) => cursorState.mode === CursorMode.Reaction ? { ...state, isPressed: true } : state);
     }, [cursorState.mode, updateMyPresence]);
 
     const setReaction = useCallback((reaction: string) => {
         setCursorState({ mode: CursorMode.Reaction, reaction, isPressed: false });
     }, []);
 
-    const handlePointerUp = useCallback((event: React.PointerEvent) => {
-        setCursorState((state: CursorState) =>
-            cursorState.mode === CursorMode.Reaction ?
-                { ...state, isPressed: true } : state
-        );
-    }, [cursorState.mode, setCursorState])
-
-
+    const handlePointerUp = useCallback(() => {
+        setCursorState((state) => cursorState.mode === CursorMode.Reaction ? { ...state, isPressed: false } : state);
+    }, [cursorState.mode]);
 
     useEffect(() => {
         const onKeyUp = (e: KeyboardEvent) => {
             if (e.key === '/') {
-                setCursorState({
-                    mode: CursorMode.Chat,
-                    previousMessage: null,
-                    message: '',
-                });
+                setCursorState({ mode: CursorMode.Chat, previousMessage: null, message: '' });
             } else if (e.key === 'Escape') {
                 updateMyPresence({ message: '' });
                 setCursorState({ mode: CursorMode.Hidden });
             } else if (e.key === 'e') {
-                setCursorState({
-                    mode: CursorMode.ReactionSelector,
-                });
+                setCursorState({ mode: CursorMode.ReactionSelector });
             }
         };
 
@@ -138,8 +104,6 @@ const Live = () => {
             className="border-2 border-green-500 h-[100vh] w-full flex justify-center items-center text-center"
         >
             <h1 className="text-2xl text-white">Liveblocks Project</h1>
-
-
             {reactions.map((reaction) => (
                 <FlyingReaction
                     key={reaction.timestamp.toString()}
@@ -149,8 +113,6 @@ const Live = () => {
                     value={reaction.value}
                 />
             ))}
-
-
             {cursor && (
                 <CursorChat
                     cursor={cursor}
@@ -159,15 +121,9 @@ const Live = () => {
                     updateMyPresence={updateMyPresence}
                 />
             )}
-
             {cursorState.mode === CursorMode.ReactionSelector && (
-                <ReactionSelector
-                    setReaction={(reaction) => {
-                        setReaction(reaction);
-                    }}
-                />
+                <ReactionSelector setReaction={setReaction} />
             )}
-
             <LiveCursor others={others} />
         </div>
     );
