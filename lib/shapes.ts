@@ -1,5 +1,6 @@
-import { fabric } from "fabric";
+import * as fabric from 'fabric'; // v6
 import { v4 as uuidv4 } from "uuid";
+import { Rect } from 'fabric';
 
 import {
   CustomFabricObject,

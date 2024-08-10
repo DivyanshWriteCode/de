@@ -127,7 +127,7 @@ const Live = ({ canvasRef }: Props) => {
 
   return (
     <div
-      id='canvas-container'
+      id="canvas"
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
